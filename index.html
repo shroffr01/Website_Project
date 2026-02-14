@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyLens - Weather Forecast</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+        </svg>
+        <span>SkyLens</span>
+      </div>
+    </header>
+
+    <!-- Weather Alerts Banner -->
+    <div id="alerts-banner" class="alerts-banner hidden">
+      <div class="alerts-container">
+        <div class="alerts-icon" id="alerts-icon">
+          <svg id="alert-icon-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <svg id="alert-icon-check" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div class="alerts-content">
+          <span id="alerts-label" class="alerts-label">Weather Alert</span>
+          <div id="alerts-marquee" class="alerts-marquee"></div>
+        </div>
+        <button id="alerts-expand-btn" class="alerts-expand-btn" aria-label="View all alerts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </button>
+      </div>
+      <div id="alerts-detail" class="alerts-detail hidden"></div>
+    </div>
+
+    <main class="main-layout">
+      <!-- Left Sidebar: Science & Weather News -->
+      <aside class="news-sidebar">
+        <div class="news-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+            <path d="M18 14h-8"/>
+            <path d="M15 18h-5"/>
+            <path d="M10 6h8v4h-8V6Z"/>
+          </svg>
+          <h3>Science & Weather</h3>
+        </div>
+        <div id="news-list" class="news-list">
+          <div class="news-loading">
+            <div class="spinner-small"></div>
+            <span>Loading news...</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <section class="search-section">
+          <h1>Weather Forecast</h1>
+          <p class="subtitle">Enter a city or location to get the current weather</p>
+          <div class="search-container">
+            <form id="search-form" class="search-bar" autocomplete="off">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.3-4.3"/>
+              </svg>
+              <input
+                type="text"
+                id="location-input"
+                placeholder="Search for a city..."
+                aria-label="Search for a city"
+              >
+              <button type="submit" id="search-btn" aria-label="Search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 12h14"/>
+                  <path d="m12 5 7 7-7 7"/>
+                </svg>
+              </button>
+            </form>
+            <div id="suggestions" class="suggestions hidden"></div>
+          </div>
+        </section>
+
+        <section id="error-section" class="error-section hidden">
+        <div class="error-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p id="error-message"></p>
+        </div>
+      </section>
+
+      <section id="loading-section" class="loading-section hidden">
+        <div class="spinner"></div>
+        <p>Fetching weather data...</p>
+      </section>
+
+      <section id="weather-section" class="weather-section hidden">
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+          <button class="tab-btn active" data-tab="current">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2"/>
+              <path d="M12 20v2"/>
+              <path d="m4.93 4.93 1.41 1.41"/>
+              <path d="m17.66 17.66 1.41 1.41"/>
+              <path d="M2 12h2"/>
+              <path d="M20 12h2"/>
+              <path d="m6.34 17.66-1.41 1.41"/>
+              <path d="m19.07 4.93-1.41 1.41"/>
+            </svg>
+            <span>Current</span>
+          </button>
+          <button class="tab-btn" data-tab="forecast">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span>7-Day</span>
+          </button>
+          <button class="tab-btn" data-tab="radar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+              <path d="M16 14v6"/>
+              <path d="M8 14v6"/>
+              <path d="M12 16v6"/>
+            </svg>
+            <span>Radar</span>
+          </button>
+        </div>
+
+        <!-- Current Weather Tab -->
+        <div id="tab-current" class="tab-content active">
+          <div class="weather-main-card">
+            <div class="weather-header">
+              <div class="location-info">
+                <h2 id="location-name"></h2>
+                <p id="location-time" class="location-time"></p>
+              </div>
+            </div>
+            <div class="weather-primary">
+              <div class="temperature-block">
+                <span id="weather-icon" class="weather-icon-large"></span>
+                <div class="temp-container">
+                  <span id="current-temp" class="current-temp"></span>
+                  <span class="temp-unit">&deg;F</span>
+                </div>
+              </div>
+              <div class="condition-block">
+                <p id="current-condition" class="current-condition"></p>
+                <p id="feels-like" class="feels-like"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="details-grid">
+            <div class="detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v10l4.24 4.24"/>
+                  <circle cx="12" cy="12" r="10"/>
+                </svg>
+              </div>
+              <div class="detail-info">
+                <span class="detail-label">Dewpoint</span>
+                <span id="dewpoint" class="detail-value"></span>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+                </svg>
+              </div>
+              <div class="detail-info">
+                <span class="detail-label">Sky Cover</span>
+                <span id="sky-cover" class="detail-value"></span>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+                  <path d="M16 14v6"/>
+                  <path d="M8 14v6"/>
+                  <path d="M12 16v6"/>
+                </svg>
+              </div>
+              <div class="detail-info">
+                <span class="detail-label">Precipitation</span>
+                <span id="precip-chance" class="detail-value"></span>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a4 4 0 0 0-4 4c0 4 4 8 4 8s4-4 4-8a4 4 0 0 0-4-4Z"/>
+                  <path d="M12 13v9"/>
+                </svg>
+              </div>
+              <div class="detail-info">
+                <span class="detail-label">Humidity</span>
+                <span id="humidity" class="detail-value"></span>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
+                  <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
+                  <path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
+                </svg>
+              </div>
+              <div class="detail-info">
+                <span class="detail-label">Wind</span>
+                <span id="wind" class="detail-value"></span>
+              </div>
+            </div>
+
+            <div class="detail-card">
+              <div class="detail-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="4"/>
+                  <path d="M12 2v2"/>
+                  <path d="M12 20v2"/>
+                  <path d="m4.93 4.93 1.41 1.41"/>
+                  <path d="m17.66 17.66 1.41 1.41"/>
+                  <path d="M2 12h2"/>
+                  <path d="M20 12h2"/>
+                  <path d="m6.34 17.66-1.41 1.41"/>
+                  <path d="m19.07 4.93-1.41 1.41"/>
+                </svg>
+              </div>
+              <div class="detail-info">
+                <span class="detail-label">UV Index</span>
+                <span id="uv-index" class="detail-value">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7-Day Forecast Tab -->
+        <div id="tab-forecast" class="tab-content">
+          <div class="forecast-section">
+            <h3>7-Day Forecast</h3>
+            <div id="daily-forecast" class="daily-forecast"></div>
+          </div>
+        </div>
+
+        <!-- Radar Tab -->
+        <div id="tab-radar" class="tab-content">
+          <div class="radar-section">
+            <div class="radar-header">
+              <h3>Precipitation Radar</h3>
+              <div class="radar-controls">
+                <button id="radar-play-btn" class="radar-btn" aria-label="Play/Pause">
+                  <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                  </svg>
+                  <svg id="pause-icon" class="hidden" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <rect x="6" y="4" width="4" height="16"/>
+                    <rect x="14" y="4" width="4" height="16"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="radar-container">
+              <div id="radar-map"></div>
+              <div class="radar-timeline">
+                <input type="range" id="radar-slider" min="0" max="0" value="0" class="radar-slider">
+                <span id="radar-time" class="radar-time">--:--</span>
+              </div>
+              <div class="radar-legend">
+                <span class="legend-label">Light</span>
+                <div class="legend-bar"></div>
+                <span class="legend-label">Heavy</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      </div>
+    </main>
+
+    <footer>
+      <p>Powered by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> &middot; SkyLens Weather</p>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
